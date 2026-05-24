@@ -26,7 +26,6 @@ export async function POST(
       }
 
       if (reservation.status === "CONFIRMED") {
-        // Already confirmed — idempotent success
         return {
           body: {
             id: reservation.id,
@@ -38,11 +37,13 @@ export async function POST(
       }
 
       if (reservation.status === "RELEASED") {
-        return { body: { error: "Reservation has already been released" }, status: 410 };
+        return {
+          body: { error: "Reservation has already been released" },
+          status: 410,
+        };
       }
 
       if (new Date() > reservation.expiresAt) {
-        // Lazy expiry: release the stock and mark as released
         await prisma.$transaction([
           prisma.stock.updateMany({
             where: {
@@ -59,7 +60,6 @@ export async function POST(
         return { body: { error: "Reservation has expired" }, status: 410 };
       }
 
-      // Confirm: deduct from total, release the reserved hold
       await prisma.$transaction([
         prisma.stock.updateMany({
           where: {
@@ -83,7 +83,7 @@ export async function POST(
           productName: reservation.product.name,
           warehouseName: reservation.warehouse.name,
           quantity: reservation.quantity,
-          status: "CONFIRMED",
+          status: "CONFIRMED" as const,
           message: "Reservation confirmed successfully",
         },
         status: 200,
