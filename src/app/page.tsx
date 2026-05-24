@@ -1,10 +1,11 @@
 // src/app/page.tsx
+export const dynamic = "force-dynamic";
+
 import { ProductCard } from "@/components/ProductCard";
 import type { ProductWithStock } from "@/types";
 import { ShoppingBag } from "lucide-react";
 
 async function getProducts(): Promise<ProductWithStock[]> {
-  // Use absolute URL for server-side fetch
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const res = await fetch(`${baseUrl}/api/products`, {
     cache: "no-store",
