@@ -16,8 +16,9 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
+  const firstAvailableStock = product.stocks.find((stock) => stock.available > 0);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(
-    product.stocks[0]?.warehouseId ?? ""
+    firstAvailableStock?.warehouseId ?? product.stocks[0]?.warehouseId ?? ""
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
