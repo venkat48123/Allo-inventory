@@ -1,94 +1,73 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { ProductCard } from "@/components/ProductCard";
+import { ShoppingBag } from "lucide-react";
 
-interface ProductWithStock {
-  _id: string;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-}
-
-async function getProducts(): Promise<ProductWithStock[]> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    if (!baseUrl) {
-      console.error("NEXT_PUBLIC_APP_URL is missing");
-      return [];
-    }
-
-    const res = await fetch(`${baseUrl}/api/products`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch products");
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    return [];
-  }
-}
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const products = await getProducts();
+  let products: any[] = [];
+
+  try {
+    products = await prisma.product.findMany({
+      include: {
+        stocks: {
+          include: { warehouse: true },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Failed to fetch products:", error);
+  }
+
+  const mapped = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    imageUrl: p.imageUrl,
+    price: p.price,
+    stocks: p.stocks.map((s: any) => ({
+      warehouseId: s.warehouseId,
+      warehouseName: s.warehouse.name,
+      warehouseLocation: s.warehouse.location,
+      total: s.total,
+      reserved: s.reserved,
+      available: Math.max(0, s.total - s.reserved),
+    })),
+  }));
 
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Allo Inventory</h1>
+    <main className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <ShoppingBag className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">Allo Inventory</h1>
+            <p className="text-xs text-slate-500">Multi-warehouse fulfillment</p>
+          </div>
+        </div>
+      </header>
 
-          <Link
-            href="/add-product"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Add Product
-          </Link>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900">Products</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            {mapped.length} products available across your warehouses
+          </p>
         </div>
 
-        {products.length === 0 ? (
-          <div className="bg-white p-6 rounded shadow text-center text-gray-500">
-            No products found.
+        {mapped.length === 0 ? (
+          <div className="text-center py-20 text-slate-500">
+            <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p>No products found. Run <code className="bg-slate-100 px-1 rounded">npm run db:seed</code> to add sample data.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <div
-                key={product._id}
-                className="bg-white rounded shadow p-5"
-              >
-                <h2 className="text-xl font-semibold mb-2">
-                  {product.name}
-                </h2>
-
-                <p className="text-gray-600 mb-1">
-                  Category: {product.category}
-                </p>
-
-                <p className="text-gray-600 mb-1">
-                  Price: ₹{product.price}
-                </p>
-
-                <p className="text-gray-600 mb-4">
-                  Stock: {product.stock}
-                </p>
-
-                <div className="flex gap-3">
-                  <Link
-                    href={`/edit-product/${product._id}`}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                  >
-                    Edit
-                  </Link>
-
-                  <button className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mapped.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
