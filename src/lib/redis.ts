@@ -1,23 +1,16 @@
-// src/lib/redis.ts
 import Redis from "ioredis";
 
-const globalForRedis = globalThis as unknown as {
-  redis: Redis | undefined;
-};
+let redis: Redis | null = null;
 
-function createRedisClient(): Redis {
-  const url = process.env.REDIS_URL;
-  if (!url) {
-    throw new Error("REDIS_URL environment variable is not set");
+export function getRedis() {
+  if (!process.env.REDIS_URL) {
+    console.warn("REDIS_URL is not set");
+    return null;
   }
-  const client = new Redis(url, {
-    maxRetriesPerRequest: 3,
-    lazyConnect: false,
-  });
-  client.on("error", (err) => console.error("[Redis]", err));
-  return client;
+
+  if (!redis) {
+    redis = new Redis(process.env.REDIS_URL);
+  }
+
+  return redis;
 }
-
-export const redis = globalForRedis.redis ?? createRedisClient();
-
-if (process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
